@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 )
@@ -100,6 +101,13 @@ func movePlayer(dir string) {
 	player.row, player.col = makeMove(player.row, player.col, dir)
 }
 
+func moveGhosts() {
+	for _, g := range ghosts {
+		dir := drawDirection()
+		g.row, g.col = makeMove(g.row, g.col, dir)
+	}
+}
+
 var maze []string
 
 func loadMaze() error {
@@ -121,6 +129,8 @@ func loadMaze() error {
 			switch char {
 			case 'P':
 				player = Player{row, col}
+			case 'G':
+				ghosts = append(ghosts, &Ghost{row, col})
 			}
 		}
 	}
@@ -143,6 +153,11 @@ func printScreen() {
 	}
 	moveCursor(player.row, player.col)
 	fmt.Printf("P")
+
+	for _, g := range ghosts {
+		moveCursor(g.row, g.col)
+		fmt.Printf("G")
+	}
 }
 
 func clearScreen() {
@@ -159,6 +174,25 @@ type Player struct {
 	row int
 	col int
 }
+
+// Ghost is the enemy that chases the player
+type Ghost struct {
+	row int
+	col int
+}
+
+func drawDirection() string {
+	dir := rand.Intn(4)
+	move := map[int]string{
+		0: "UP",
+		1: "DOWN",
+		2: "RIGHT",
+		3: "LEFT",
+	}
+	return move[dir]
+}
+
+var ghosts []*Ghost
 
 var player Player
 
@@ -186,6 +220,7 @@ func main() {
 
 		// process movement
 		movePlayer(input)
+		moveGhosts()
 
 		// process collisions
 
