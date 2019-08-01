@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -155,21 +156,21 @@ func printScreen() {
 		for _, chr := range line {
 			switch chr {
 			case '#':
-				fmt.Printf("%c", chr)
+				fmt.Printf(cfg.Wall)
 			case '.':
-				fmt.Printf("%c", chr)
+				fmt.Printf(cfg.Dot)
 			default:
-				fmt.Printf(" ")
+				fmt.Printf(cfg.Space)
 			}
 		}
 		fmt.Printf("\n")
 	}
 	moveCursor(player.row, player.col)
-	fmt.Printf("P")
+	fmt.Printf(cfg.Player)
 
 	for _, g := range ghosts {
 		moveCursor(g.row, g.col)
-		fmt.Printf("G")
+		fmt.Printf(cfg.Ghost)
 	}
 
 	// print score
@@ -183,7 +184,13 @@ func clearScreen() {
 }
 
 func moveCursor(row, col int) {
-	fmt.Printf("\x1b[%d;%df", row+1, col+1)
+	if cfg.UseEmoji {
+		// scale col value by 2 to ensure characters are positioned right
+		fmt.Printf("\x1b[%d;%df", row+1, col*2+1)
+	} else {
+		fmt.Printf("\x1b[%d;%df", row+1, col+1)
+	}
+
 }
 
 // Player is the player character
@@ -196,6 +203,35 @@ type Player struct {
 type Ghost struct {
 	row int
 	col int
+}
+
+// Config holds the emoji configuration
+type Config struct {
+	Player   string `json:"player"`
+	Ghost    string `json:"ghost"`
+	Wall     string `json:"wall"`
+	Dot      string `json:"dot"`
+	Pill     string `json:"pill"`
+	Death    string `json:"death"`
+	Space    string `json:"space"`
+	UseEmoji bool   `json:"use_emoji"`
+}
+
+var cfg Config
+
+func loadConfig() error {
+	f, err := os.Open("config.json")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	decoder := json.NewDecoder(f)
+	err = decoder.Decode(&cfg)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func drawDirection() string {
@@ -223,7 +259,13 @@ func main() {
 		log.Printf("Error loading maze: %v\n", err)
 		return
 	}
+
 	// load resources
+	err = loadConfig()
+	if err != nil {
+		log.Printf("Error loading configuration: %v\n", err)
+		return
+	}
 
 	//process input (async)
 	input := make(chan string)
@@ -265,6 +307,11 @@ func main() {
 
 		// Temp: break infinite loop
 		if numDots == 0 || lives == 0 {
+			if lives == 0 {
+				moveCursor(player.row, player.col)
+				fmt.Printf(cfg.Death)
+				moveCursor(len(maze)+2, 0)
+			}
 			break
 		}
 
