@@ -45,9 +45,59 @@ func readInput() (string, error) {
 	// if we read just one byte and if that byte is the escape key.
 	if cnt == 1 && buffer[0] == 0x1b {
 		return "ESC", nil
+	} else if cnt >= 3 {
+		// escape sequence for arrow keys are 3 bytes long
+		if buffer[0] == 0x1b && buffer[1] == '[' {
+			switch buffer[2] {
+			case 'A':
+				return "UP", nil
+			case 'B':
+				return "DOWN", nil
+			case 'C':
+				return "RIGHT", nil
+			case 'D':
+				return "LEFT", nil
+			}
+		}
 	}
 
 	return "", nil
+}
+
+func makeMove(oldRow, oldCol int, dir string) (newRow, newCol int) {
+	newRow, newCol = oldRow, oldCol
+	switch dir {
+	case "UP":
+		newRow = newRow - 1
+		if newRow < 0 {
+			newRow = len(maze) - 1
+		}
+	case "DOWN":
+		newRow = newRow + 1
+		if newRow == len(maze)-1 {
+			newRow = 0
+		}
+	case "RIGHT":
+		newCol = newCol + 1
+		if newCol == len(maze[0]) {
+			newCol = 0
+		}
+	case "LEFT":
+		newCol = newCol - 1
+		if newCol < 0 {
+			newCol = len(maze[0]) - 1
+		}
+	}
+
+	if maze[newRow][newCol] == '#' {
+		newRow = oldRow
+		newCol = oldCol
+	}
+	return
+}
+
+func movePlayer(dir string) {
+	player.row, player.col = makeMove(player.row, player.col, dir)
 }
 
 var maze []string
@@ -65,14 +115,34 @@ func loadMaze() error {
 		maze = append(maze, line)
 	}
 
+	// capture the player position
+	for row, line := range maze {
+		for col, char := range line {
+			switch char {
+			case 'P':
+				player = Player{row, col}
+			}
+		}
+	}
+
 	return nil
 }
 
 func printScreen() {
 	clearScreen()
 	for _, line := range maze {
-		fmt.Println(line)
+		for _, chr := range line {
+			switch chr {
+			case '#':
+				fmt.Printf("%c", chr)
+			default:
+				fmt.Printf(" ")
+			}
+		}
+		fmt.Printf("\n")
 	}
+	moveCursor(player.row, player.col)
+	fmt.Printf("P")
 }
 
 func clearScreen() {
@@ -83,6 +153,14 @@ func clearScreen() {
 func moveCursor(row, col int) {
 	fmt.Printf("\x1b[%d;%df", row+1, col+1)
 }
+
+// Player is the player character
+type Player struct {
+	row int
+	col int
+}
+
+var player Player
 
 func main() {
 	// initialize game
@@ -107,6 +185,7 @@ func main() {
 		}
 
 		// process movement
+		movePlayer(input)
 
 		// process collisions
 
