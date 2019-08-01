@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"time"
 )
 
 // init invoke stty to modify terminal configuration
@@ -224,20 +225,33 @@ func main() {
 	}
 	// load resources
 
+	//process input (async)
+	input := make(chan string)
+	go func(ch chan<- string) {
+		for {
+			input, err := readInput()
+			if err != nil {
+				log.Printf("Error reading input: %v", err)
+				ch <- "ESC"
+			}
+			ch <- input
+		}
+	}(input)
+
 	// game loop
 	for {
 		// update screen
 		printScreen()
 
-		// process input
-		input, err := readInput()
-		if err != nil {
-			log.Printf("Error reading input: %v", err)
-			break
-		}
-
 		// process movement
-		movePlayer(input)
+		select {
+		case inp := <-input:
+			if inp == "ESC" {
+				lives = 0
+			}
+			movePlayer(inp)
+		default:
+		}
 		moveGhosts()
 
 		// process collisions
@@ -250,10 +264,11 @@ func main() {
 		// check game over
 
 		// Temp: break infinite loop
-		if input == "ESC" || numDots == 0 || lives == 0 {
+		if numDots == 0 || lives == 0 {
 			break
 		}
 
 		// repeat
+		time.Sleep(200 * time.Millisecond)
 	}
 }
