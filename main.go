@@ -99,6 +99,14 @@ func makeMove(oldRow, oldCol int, dir string) (newRow, newCol int) {
 
 func movePlayer(dir string) {
 	player.row, player.col = makeMove(player.row, player.col, dir)
+	// if player is in the same spot as a dot, decrement the dots and increment the score
+	switch maze[player.row][player.col] {
+	case '.':
+		numDots--
+		score++
+		// Remove dot from the maze
+		maze[player.row] = maze[player.row][0:player.col] + " " + maze[player.row][player.col+1:]
+	}
 }
 
 func moveGhosts() {
@@ -131,6 +139,8 @@ func loadMaze() error {
 				player = Player{row, col}
 			case 'G':
 				ghosts = append(ghosts, &Ghost{row, col})
+			case '.':
+				numDots++
 			}
 		}
 	}
@@ -145,6 +155,8 @@ func printScreen() {
 			switch chr {
 			case '#':
 				fmt.Printf("%c", chr)
+			case '.':
+				fmt.Printf("%c", chr)
 			default:
 				fmt.Printf(" ")
 			}
@@ -158,6 +170,10 @@ func printScreen() {
 		moveCursor(g.row, g.col)
 		fmt.Printf("G")
 	}
+
+	// print score
+	moveCursor(len(maze)+1, 0)
+	fmt.Printf("Score: %v\nLives: %v\n", score, lives)
 }
 
 func clearScreen() {
@@ -193,8 +209,10 @@ func drawDirection() string {
 }
 
 var ghosts []*Ghost
-
 var player Player
+var score int
+var numDots int
+var lives = 1
 
 func main() {
 	// initialize game
@@ -223,11 +241,16 @@ func main() {
 		moveGhosts()
 
 		// process collisions
+		for _, g := range ghosts {
+			if player.row == g.row && player.col == g.col {
+				lives = 0
+			}
+		}
 
 		// check game over
 
 		// Temp: break infinite loop
-		if input == "ESC" {
+		if input == "ESC" || numDots == 0 || lives == 0 {
 			break
 		}
 
